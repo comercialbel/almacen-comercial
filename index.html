@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MotoStock - Gestión de Pedidos</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <!-- QR Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="font-sans bg-slate-50 text-slate-800" style="font-family: 'Inter', sans-serif;">
+    <div id="app" class="min-h-screen pb-24">
+        <!-- Header -->
+        <header class="sticky top-0 z-20 bg-white shadow-sm py-4 px-4 md:px-6">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <div class="bg-emerald-600 text-white p-2 rounded-2xl">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-motorcycle"><path d="M12 19h6.5a2.5 2.5 0 0 0 0-5H5a2.5 2.5 0 0 1 0-5h12.5"/><path d="M15 12a3 3 0 0 1-3 3H9"/><path d="M9 9h.01"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-semibold text-slate-900">MotoStock</h1>
+                        <p class="text-sm text-slate-500">Gestión de Pedidos</p>
+                    </div>
+                </div>
+                <button id="newOrderBtn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-medium transition-all duration-300 shadow-sm hover:shadow">
+                    Nuevo Pedido
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 md:px-6 py-6">
+            <!-- Summary Card -->
+            <div class="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white rounded-2xl p-6 mb-8 shadow-sm">
+                <div class="flex flex-col md:flex-row md:items-center justify-between">
+                    <div class="mb-4 md:mb-0">
+                        <h2 class="text-xl font-bold mb-2" id="dealerName">Concesionario Principal</h2>
+                        <input type="text" id="dealerInput" class="bg-emerald-500/30 border border-emerald-400/50 rounded-xl px-4 py-2 w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-white uppercase" placeholder="Nombre del concesionario">
+                    </div>
+                    <div class="flex items-center">
+                        <div class="relative w-24 h-24">
+                            <svg class="w-full h-full" viewBox="0 0 36 36">
+                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-dasharray="100, 100"/>
+                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="white" stroke-width="3" stroke-dasharray="75, 100" stroke-linecap="round" id="progressCircle"/>
+                                <text x="18" y="20.5" text-anchor="middle" fill="white" font-size="6" font-weight="bold" id="progressText">0/40</text>
+                                <text x="18" y="25" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="4">Unidades</text>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-3xl font-bold" id="countDisplay">0</div>
+                            <div class="text-emerald-100">de 40 unidades</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 text-sm text-emerald-100 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    <span id="orderInfo">No hay pedido activo. Crea un nuevo pedido para comenzar.</span>
+                </div>
+            </div>
+
+            <!-- Motorcycles List -->
+            <div id="listView" class="block">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-slate-900">Motocicletas en el Pedido</h2>
+                    <div class="text-sm text-slate-500">
+                        <span id="orderNumberDisplay">ORD-0000</span>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="text-center py-12 bg-white rounded-2xl shadow-sm">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-motorcycle"><path d="M12 19h6.5a2.5 2.5 0 0 0 0-5H5a2.5 2.5 0 0 1 0-5h12.5"/><path d="M15 12a3 3 0 0 1-3 3H9"/><path d="M9 9h.01"/></svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-slate-900 mb-2">No hay motocicletas registradas</h3>
+                    <p class="text-slate-600 mb-6 max-w-md mx-auto">Comienza agregando una motocicleta al pedido utilizando el botón "Añadir Moto" en la parte inferior.</p>
+                </div>
+
+                <!-- Motorcycles List -->
+                <div id="motorcyclesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Motorcycle cards will be inserted here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Form View (Hidden by default) -->
+            <div id="formView" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-slate-900" id="formTitle">Agregar Motocicleta</h2>
+                    <button id="backToListBtn" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-2xl font-medium transition-all duration-300">
+                        Volver al Listado
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm p-6">
+                    <form id="motorcycleForm" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Model -->
+                            <div class="space-y-2">
+                                <label for="model" class="block text-sm font-medium text-slate-700">Modelo *</label>
+                                <input type="text" id="model" name="model" required class="w-full px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 uppercase" placeholder="EJ: TT150">
+                            </div>
+
+                            <!-- Year -->
+                            <div class="space-y-2">
+                                <label for="year" class="block text-sm font-medium text-slate-700">Año</label>
+                                <input type="number" id="year" name="year" min="2000" max="2024" class="w-full px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300">
+                            </div>
+
+                            <!-- Primary Color -->
+                            <div class="space-y-2">
+                                <label for="primaryColor" class="block text-sm font-medium text-slate-700">Color Principal</label>
+                                <input type="text" id="primaryColor" name="primaryColor" class="w-full px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 uppercase" placeholder="EJ: ROJO">
+                            </div>
+
+                            <!-- Secondary Color -->
+                            <div class="space-y-2">
+                                <label for="secondaryColor" class="block text-sm font-medium text-slate-700">Color Secundario</label>
+                                <input type="text" id="secondaryColor" name="secondaryColor" class="w-full px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 uppercase" placeholder="EJ: NEGRO">
+                            </div>
+
+                            <!-- Chassis Number -->
+                            <div class="space-y-2">
+                                <label for="chassisNumber" class="block text-sm font-medium text-slate-700">Nº Chasis *</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="chassisNumber" name="chassisNumber" required class="flex-1 px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 uppercase" placeholder="EJ: JH2SC5900XM123456">
+                                    <button type="button" id="scanChassisBtn" class="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all duration-300">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Engine Number -->
+                            <div class="space-y-2">
+                                <label for="engineNumber" class="block text-sm font-medium text-slate-700">Nº Motor *</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="engineNumber" name="engineNumber" required class="flex-1 px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 uppercase" placeholder="EJ: SC59E1234567">
+                                    <button type="button" id="scanEngineBtn" class="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all duration-300">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Plate -->
+                            <div class="space-y-2">
+                                <label for="plate" class="block text-sm font-medium text-slate-700">Placa</label>
+                                <input type="text" id="plate" name="plate" class="w-full px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 uppercase" placeholder="EJ: AB1C23D">
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="space-y-2 md:col-span-2">
+                                <label for="notes" class="block text-sm font-medium text-slate-700">Observaciones</label>
+                                <textarea id="notes" name="notes" rows="3" class="w-full px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 uppercase" placeholder="EJ: RAYONES LEVES EN EL DEPÓSITO"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Validation Error -->
+                        <div id="formError" class="hidden p-4 bg-red-50 text-red-700 rounded-2xl border border-red-200">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-circle"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                                <span id="errorMessage">Error de validación</span>
+                            </div>
+                        </div>
+
+                        <!-- AI Suggestion -->
+                        <div id="aiSuggestion" class="hidden p-4 bg-blue-50 text-blue-700 rounded-2xl border border-blue-200">
+                            <div class="flex items-start gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-brain mt-0.5"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+                                <div>
+                                    <div class="font-medium mb-1">Sugerencia de IA</div>
+                                    <p id="aiSuggestionText">Basado en los datos ingresados, la IA sugiere verificar la compatibilidad del modelo con el año especificado.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Action Bar -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-4 px-6 shadow-lg z-10">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <button id="exportExcelBtn" class="px-6 py-3 border border-emerald-600 text-emerald-600 hover:bg-emerald-50 rounded-2xl font-medium transition-all duration-300 shadow-sm flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-spreadsheet"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>
+                    Exportar Excel
+                </button>
+                <button id="addMotoBtn" type="button" class="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-medium transition-all duration-300 shadow-sm hover:shadow flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    <span id="addMotoText">Añadir Moto</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- QR Scanner Modal -->
+        <div id="qrScannerModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-30 hidden">
+            <div class="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-xl">
+                <div class="text-center mb-6">
+                    <h3 class="text-2xl font-bold text-slate-900 mb-2">Escáner QR</h3>
+                    <p class="text-slate-600">Apunte la cámara hacia el código QR de la motocicleta</p>
+                </div>
+                
+                <!-- QR Scanner Container -->
+                <div id="qr-reader" class="w-full max-w-md mx-auto mb-6"></div>
+                
+                <!-- Manual Input as Fallback -->
+                <div class="bg-slate-50 p-4 rounded-xl mb-6">
+                    <h4 class="font-medium text-slate-700 mb-2">¿No funciona el escáner?</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm text-slate-600 mb-1">Formato QR esperado: CHASIS|MOTOR|MODELO|COLOR</label>
+                            <input type="text" id="manualQrInput" class="w-full px-4 py-2 border border-slate-300 rounded-xl uppercase" placeholder="EJ: JH2SC5900XM123456|SC59E1234567|YAMAHA R1|ROJO">
+                        </div>
+                        <button id="useManualInputBtn" class="w-full px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-xl transition-all duration-300">
+                            Usar Datos Manuales
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button id="cancelQrScanBtn" type="button" class="flex-1 px-4 py-3 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-2xl font-medium transition-all duration-300">
+                        Cancelar
+                    </button>
+                    <button id="stopCameraBtn" type="button" class="flex-1 px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-2xl font-medium transition-all duration-300">
+                        Detener Cámara
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        const state = {
+            currentOrder: {
+                id: null,
+                orderNumber: 'ORD-0000',
+                clientName: '',
+                date: new Date().toISOString().split('T')[0],
+                motorcycles: []
+            },
+            isEditing: false,
+            editingIndex: -1,
+            scanTarget: null, // 'chassis', 'engine' or 'full'
+            dealerName: 'Concesionario Principal',
+            currentView: 'list', // 'list' or 'form'
+            qrScanner: null,
+            isCameraActive: false
+        };
+
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // DOM Elements
+        const elements = {
+            app: document.getElementById('app'),
+            listView: document.getElementById('listView'),
+            formView: document.getElementById('formView'),
+            formTitle: document.getElementById('formTitle'),
+            emptyState: document.getElementById('emptyState'),
+            motorcyclesList: document.getElementById('motorcyclesList'),
+            motorcycleForm: document.getElementById('motorcycleForm'),
+            addMotoBtn: document.getElementById('addMotoBtn'),
+            addMotoText: document.getElementById('addMotoText'),
+            backToListBtn: document.getElementById('backToListBtn'),
+            exportExcelBtn: document.getElementById('exportExcelBtn'),
+            newOrderBtn: document.getElementById('newOrderBtn'),
+            qrScannerModal: document.getElementById('qrScannerModal'),
+            scanChassisBtn: document.getElementById('scanChassisBtn'),
+            scanEngineBtn: document.getElementById('scanEngineBtn'),
+            cancelQrScanBtn: document.getElementById('cancelQrScanBtn'),
+            stopCameraBtn: document.getElementById('stopCameraBtn'),
+            manualQrInput: document.getElementById('manualQrInput'),
+            useManualInputBtn: document.getElementById('useManualInputBtn'),
+            formError: document.getElementById('formError'),
+            errorMessage: document.getElementById('errorMessage'),
+            aiSuggestion: document.getElementById('aiSuggestion'),
+            aiSuggestionText: document.getElementById('aiSuggestionText'),
+            dealerName: document.getElementById('dealerName'),
+            dealerInput: document.getElementById('dealerInput'),
+            orderInfo: document.getElementById('orderInfo'),
+            countDisplay: document.getElementById('countDisplay'),
+            orderNumberDisplay: document.getElementById('orderNumberDisplay'),
+            progressCircle: document.getElementById('progressCircle'),
+            progressText: document.getElementById('progressText')
+        };
+
+        // Initialize the application
+        function initApp() {
+            loadFromLocalStorage();
+            setupEventListeners();
+            setupAutoUppercase();
+            renderApp();
+            generateOrderNumber();
+        }
+
+        // Event Listeners Setup
+        function setupEventListeners() {
+            // Add/Save Motorcycle Button
+            elements.addMotoBtn.addEventListener('click', handleAddSaveMoto);
+
+            // Back to List Button
+            elements.backToListBtn.addEventListener('click', () => {
+                showListView();
+                resetForm();
+            });
+
+            // Export to Excel Button
+            elements.exportExcelBtn.addEventListener('click', exportToExcel);
+
+            // New Order Button
+            elements.newOrderBtn.addEventListener('click', createNewOrder);
+
+            // QR Scan Buttons
+            elements.scanChassisBtn.addEventListener('click', () => openQrScanner('chassis'));
+            elements.scanEngineBtn.addEventListener('click', () => openQrScanner('engine'));
+
+            // QR Scanner Modal Buttons
+            elements.cancelQrScanBtn.addEventListener('click', closeQrScanner);
+            elements.stopCameraBtn.addEventListener('click', stopCamera);
+            elements.useManualInputBtn.addEventListener('click', useManualInput);
+
+            // Manual QR Input - Enter key support
+            elements.manualQrInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    useManualInput();
+                }
+            });
+
+            // Form Submission
+            elements.motorcycleForm.addEventListener('submit', handleFormSubmit);
+
+            // Dealer Name Input
+            elements.dealerInput.addEventListener('input', (e) => {
+                state.dealerName = e.target.value.toUpperCase() || 'CONCESIONARIO PRINCIPAL';
+                elements.dealerName.textContent = state.dealerName;
+                saveToLocalStorage();
+            });
+
+            // Input validation for real-time AI suggestions
+            document.querySelectorAll('#motorcycleForm input, #motorcycleForm textarea').forEach(input => {
+                input.addEventListener('input', debounce(generateAISuggestion, 800));
+            });
+        }
+
+        // Setup auto-uppercase for all inputs
+        function setupAutoUppercase() {
+            // Add event listeners to all text inputs
+            document.querySelectorAll('input[type="text"], textarea').forEach(input => {
+                if (!input.classList.contains('uppercase')) {
+                    input.classList.add('uppercase');
+                }
+                
+                input.addEventListener('input', function(e) {
+                    // Store cursor position
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    
+                    // Convert to uppercase
+                    this.value = this.value.toUpperCase();
+                    
+                    // Restore cursor position
+                    this.setSelectionRange(start, end);
+                });
+            });
+        }
+
+        // Handle Add/Save Motorcycle button click
+        function handleAddSaveMoto() {
+            if (state.currentView === 'list') {
+                // Show form to add new motorcycle
+                showFormView();
+            } else {
+                // We're in form view, submit the form
+                handleFormSubmit(new Event('submit'));
+            }
+        }
+
+        // View Management
+        function showListView() {
+            elements.listView.classList.remove('hidden');
+            elements.listView.classList.add('block');
+            elements.formView.classList.remove('block');
+            elements.formView.classList.add('hidden');
+            elements.addMotoText.textContent = 'Añadir Moto';
+            state.currentView = 'list';
+        }
+
+        function showFormView() {
+            elements.listView.classList.remove('block');
+            elements.listView.classList.add('hidden');
+            elements.formView.classList.remove('hidden');
+            elements.formView.classList.add('block');
+            elements.addMotoText.textContent = 'Guardar Moto';
+            
+            // Update form title based on mode
+            if (state.isEditing) {
+                elements.formTitle.textContent = 'Editar Motocicleta';
+            } else {
+                elements.formTitle.textContent = 'Agregar Motocicleta';
+            }
+            
+            state.currentView = 'form';
+        }
+
+        // QR Scanner Functions
+        function openQrScanner(target) {
+            state.scanTarget = target;
+            elements.qrScannerModal.classList.remove('hidden');
+            elements.manualQrInput.value = '';
+            
+            // Initialize QR Scanner
+            setTimeout(() => {
+                if (!state.qrScanner) {
+                    initializeQrScanner();
+                } else {
+                    startCamera();
+                }
+            }, 100);
+        }
+
+        function initializeQrScanner() {
+            try {
+                state.qrScanner = new Html5Qrcode("qr-reader");
+                
+                // Start camera with specific constraints for QR scanning
+                const config = { 
+                    fps: 10, 
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+                
+                // Try to get user media
+                Html5Qrcode.getCameras().then(cameras => {
+                    if (cameras && cameras.length > 0) {
+                        const cameraId = cameras[0].id; // Use first available camera
+                        state.qrScanner.start(
+                            cameraId,
+                            config,
+                            onQrScanSuccess,
+                            onQrScanError
+                        ).then(() => {
+                            state.isCameraActive = true;
+                            console.log("Cámara iniciada correctamente");
+                        }).catch(err => {
+                            console.error("Error al iniciar cámara:", err);
+                            showCameraError();
+                        });
+                    } else {
+                        console.error("No se encontraron cámaras disponibles");
+                        showCameraError();
+                    }
+                }).catch(err => {
+                    console.error("Error al obtener cámaras:", err);
+                    showCameraError();
+                });
+                
+            } catch (error) {
+                console.error("Error al inicializar escáner QR:", error);
+                showCameraError();
+            }
+        }
+
+        function startCamera() {
+            if (state.qrScanner && !state.isCameraActive) {
+                Html5Qrcode.getCameras().then(cameras => {
+                    if (cameras && cameras.length > 0) {
+                        const cameraId = cameras[0].id;
+                        const config = { 
+                            fps: 10, 
+                            qrbox: { width: 250, height: 250 },
+                            aspectRatio: 1.0
+                        };
+                        
+                        state.qrScanner.start(
+                            cameraId,
+                            config,
+                            onQrScanSuccess,
+                            onQrScanError
+                        ).then(() => {
+                            state.isCameraActive = true;
+                        }).catch(err => {
+                            console.error("Error al reiniciar cámara:", err);
+                        });
+                    }
+                });
+            }
+        }
+
+        function onQrScanSuccess(decodedText) {
+            console.log("QR escaneado:", decodedText);
+            
+            // Parse QR data (expected format: CHASIS|MOTOR|MODELO|COLOR)
+            const qrData = decodedText.split('|');
+            
+            if (qrData.length >= 2) {
+                // Extract data from QR
+                const chassisNumber = qrData[0]?.trim().toUpperCase() || '';
+                const engineNumber = qrData[1]?.trim().toUpperCase() || '';
+                const model = qrData[2]?.trim().toUpperCase() || '';
+                const color = qrData[3]?.trim().toUpperCase() || '';
+                
+                // Fill form fields based on scan target
+                if (state.scanTarget === 'chassis' && chassisNumber) {
+                    document.getElementById('chassisNumber').value = chassisNumber;
+                } else if (state.scanTarget === 'engine' && engineNumber) {
+                    document.getElementById('engineNumber').value = engineNumber;
+                } else if (state.scanTarget === 'full') {
+                    // Fill all fields if it's a full scan
+                    if (chassisNumber) document.getElementById('chassisNumber').value = chassisNumber;
+                    if (engineNumber) document.getElementById('engineNumber').value = engineNumber;
+                    if (model) document.getElementById('model').value = model;
+                    if (color) document.getElementById('primaryColor').value = color;
+                }
+                
+                // Stop camera and close modal
+                stopCamera();
+                closeQrScanner();
+                
+                // Play success sound (optional)
+                playBeepSound();
+                
+                // Trigger AI suggestion
+                generateAISuggestion();
+            } else {
+                alert("Formato QR no válido. Se espera: CHASIS|MOTOR|MODELO|COLOR");
+            }
+        }
+
+        function onQrScanError(error) {
+            // Silently handle scan errors - don't show to user
+            console.log("Escaneando...", error);
+        }
+
+        function useManualInput() {
+            const manualText = elements.manualQrInput.value.trim().toUpperCase();
+            
+            if (!manualText) {
+                alert("Por favor ingresa datos en el formato: CHASIS|MOTOR|MODELO|COLOR");
+                return;
+            }
+            
+            // Parse manual input
+            onQrScanSuccess(manualText);
+        }
+
+        function stopCamera() {
+            if (state.qrScanner && state.isCameraActive) {
+                state.qrScanner.stop().then(() => {
+                    state.isCameraActive = false;
+                    console.log("Cámara detenida");
+                }).catch(err => {
+                    console.error("Error al detener cámara:", err);
+                });
+            }
+        }
+
+        function closeQrScanner() {
+            stopCamera();
+            elements.qrScannerModal.classList.add('hidden');
+        }
+
+        function showCameraError() {
+            alert("No se pudo acceder a la cámara. Por favor, asegúrate de haber otorgado los permisos necesarios y que tu dispositivo tenga cámara.");
+        }
+
+        function playBeepSound() {
+            try {
+                // Create a simple beep sound using Web Audio API
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } catch (error) {
+                console.log("No se pudo reproducir sonido:", error);
+            }
+        }
+
+        // Form Handling
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(elements.motorcycleForm);
+            const motorcycle = {
+                id: Date.now(),
+                model: formData.get('model').trim().toUpperCase(),
+                year: formData.get('year') ? parseInt(formData.get('year')) : null,
+                primaryColor: formData.get('primaryColor').trim().toUpperCase(),
+                secondaryColor: formData.get('secondaryColor').trim().toUpperCase(),
+                chassisNumber: formData.get('chassisNumber').trim().toUpperCase(),
+                engineNumber: formData.get('engineNumber').trim().toUpperCase(),
+                plate: formData.get('plate').trim().toUpperCase(),
+                notes: formData.get('notes').trim().toUpperCase()
+            };
+
+            // Validate required fields
+            if (!motorcycle.model || !motorcycle.chassisNumber || !motorcycle.engineNumber) {
+                showFormError('Todos los campos marcados con * son obligatorios.');
+                return;
+            }
+
+            // Check for duplicate chassis or engine numbers
+            const isDuplicate = state.currentOrder.motorcycles.some((moto, index) => {
+                if (state.isEditing && index === state.editingIndex) return false;
+                return moto.chassisNumber === motorcycle.chassisNumber || 
+                       moto.engineNumber === motorcycle.engineNumber;
+            });
+
+            if (isDuplicate) {
+                showFormError('El número de chasis o motor ya existe en este pedido.');
+                return;
+            }
+
+            // Check limit of 40 units
+            if (!state.isEditing && state.currentOrder.motorcycles.length >= 40) {
+                showFormError('Se ha alcanzado el límite máximo de 40 unidades por pedido.');
+                return;
+            }
+
+            // Add or update motorcycle
+            if (state.isEditing) {
+                state.currentOrder.motorcycles[state.editingIndex] = motorcycle;
+                state.isEditing = false;
+                state.editingIndex = -1;
+            } else {
+                state.currentOrder.motorcycles.push(motorcycle);
+            }
+
+            // Save and render
+            saveToLocalStorage();
+            renderApp();
+            showListView();
+            resetForm();
+            hideFormError();
+        }
+
+        function resetForm() {
+            elements.motorcycleForm.reset();
+            state.isEditing = false;
+            state.editingIndex = -1;
+            hideFormError();
+            hideAISuggestion();
+        }
+
+        function editMotorcycle(index) {
+            const moto = state.currentOrder.motorcycles[index];
+            
+            document.getElementById('model').value = moto.model;
+            document.getElementById('year').value = moto.year || '';
+            document.getElementById('primaryColor').value = moto.primaryColor;
+            document.getElementById('secondaryColor').value = moto.secondaryColor;
+            document.getElementById('chassisNumber').value = moto.chassisNumber;
+            document.getElementById('engineNumber').value = moto.engineNumber;
+            document.getElementById('plate').value = moto.plate;
+            document.getElementById('notes').value = moto.notes;
+            
+            state.isEditing = true;
+            state.editingIndex = index;
+            showFormView();
+        }
+
+        function deleteMotorcycle(index) {
+            if (confirm('¿Estás seguro de que deseas eliminar esta motocicleta?')) {
+                state.currentOrder.motorcycles.splice(index, 1);
+                saveToLocalStorage();
+                renderApp();
+            }
+        }
+
+        // Form Validation and AI
+        function showFormError(message) {
+            elements.errorMessage.textContent = message;
+            elements.formError.classList.remove('hidden');
+            elements.formError.classList.add('block');
+            
+            // Scroll to error
+            elements.formError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function hideFormError() {
+            elements.formError.classList.remove('block');
+            elements.formError.classList.add('hidden');
+        }
+
+        function showAISuggestion(message) {
+            elements.aiSuggestionText.textContent = message;
+            elements.aiSuggestion.classList.remove('hidden');
+            elements.aiSuggestion.classList.add('block');
+        }
+
+        function hideAISuggestion() {
+            elements.aiSuggestion.classList.remove('block');
+            elements.aiSuggestion.classList.add('hidden');
+        }
+
+        function generateAISuggestion() {
+            const model = document.getElementById('model').value;
+            const year = document.getElementById('year').value;
+            const chassis = document.getElementById('chassisNumber').value;
+            const engine = document.getElementById('engineNumber').value;
+            
+            // Simple AI simulation based on input
+            let suggestion = '';
+            
+            if (model && year) {
+                const currentYear = new Date().getFullYear();
+                const yearNum = parseInt(year);
+                
+                if (yearNum > currentYear) {
+                    suggestion = `El año ${year} es futuro. Verifica que sea correcto.`;
+                } else if (yearNum < 2000) {
+                    suggestion = `El modelo ${model} del año ${year} podría ser un clásico. Verifica disponibilidad de repuestos.`;
+                } else if (model.toLowerCase().includes('sport') && yearNum < 2015) {
+                    suggestion = `Las motos deportivas del año ${year} pueden requerir mantenimiento especializado.`;
+                }
+            }
+            
+            if (chassis && chassis.length < 5) {
+                suggestion = suggestion ? suggestion + ' ' : '';
+                suggestion += 'El número de chasis parece muy corto, verifica el escaneo.';
+            }
+            
+            if (engine && engine.length < 5) {
+                suggestion = suggestion ? suggestion + ' ' : '';
+                suggestion += 'El número de motor parece muy corto, verifica el escaneo.';
+            }
+            
+            if (suggestion) {
+                showAISuggestion(suggestion);
+            } else {
+                hideAISuggestion();
+            }
+        }
+
+        // New Order Creation
+        function createNewOrder() {
+            if (state.currentOrder.motorcycles.length > 0) {
+                if (!confirm('¿Crear un nuevo pedido? Se perderán los datos no guardados del pedido actual.')) {
+                    return;
+                }
+            }
+            
+            generateOrderNumber();
+            state.currentOrder = {
+                id: Date.now(),
+                orderNumber: state.currentOrder.orderNumber,
+                clientName: '',
+                date: new Date().toISOString().split('T')[0],
+                motorcycles: []
+            };
+            
+            saveToLocalStorage();
+            renderApp();
+            resetForm();
+            showListView();
+        }
+
+        function generateOrderNumber() {
+            const orderNum = Math.floor(1000 + Math.random() * 9000);
+            state.currentOrder.orderNumber = `ORD-${orderNum}`;
+        }
+
+        // Export to Excel
+        function exportToExcel() {
+            if (state.currentOrder.motorcycles.length === 0) {
+                alert('No hay motocicletas para exportar.');
+                return;
+            }
+            
+            // Prepare data for Excel
+            const data = [
+                ['Reporte de Motocicletas - MotoStock'],
+                [`Concesionario: ${state.dealerName}`],
+                [`Pedido: ${state.currentOrder.orderNumber}`],
+                [`Fecha: ${new Date().toLocaleDateString()}`],
+                [], // Empty row
+                ['Modelo', 'Año', 'Color Principal', 'Color Secundario', 'Nº Chasis', 'Nº Motor', 'Placa', 'Observaciones']
+            ];
+            
+            // Add motorcycle data
+            state.currentOrder.motorcycles.forEach(moto => {
+                data.push([
+                    moto.model,
+                    moto.year || '',
+                    moto.primaryColor,
+                    moto.secondaryColor,
+                    moto.chassisNumber,
+                    moto.engineNumber,
+                    moto.plate,
+                    moto.notes
+                ]);
+            });
+            
+            // Create worksheet
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Pedido Motos');
+            
+            // Generate Excel file
+            const fileName = `pedido_motos_${state.currentOrder.orderNumber}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+        }
+
+        // Local Storage Management
+        function saveToLocalStorage() {
+            const appState = {
+                currentOrder: state.currentOrder,
+                dealerName: state.dealerName
+            };
+            localStorage.setItem('motoStockApp', JSON.stringify(appState));
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('motoStockApp');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                state.currentOrder = parsed.currentOrder || state.currentOrder;
+                state.dealerName = parsed.dealerName || 'CONCESIONARIO PRINCIPAL';
+                
+                // Generate new order number if none exists
+                if (!state.currentOrder.orderNumber || state.currentOrder.orderNumber === 'ORD-0000') {
+                    generateOrderNumber();
+                }
+            }
+        }
+
+        // Rendering Functions
+        function renderApp() {
+            renderSummary();
+            renderMotorcyclesList();
+            
+            // Update UI elements
+            elements.dealerName.textContent = state.dealerName;
+            elements.dealerInput.value = state.dealerName;
+            elements.orderNumberDisplay.textContent = state.currentOrder.orderNumber;
+            
+            // Update order info
+            if (state.currentOrder.motorcycles.length === 0) {
+                elements.orderInfo.textContent = 'No hay motocicletas en el pedido. Agrega la primera.';
+            } else {
+                const date = new Date(state.currentOrder.date).toLocaleDateString();
+                elements.orderInfo.textContent = `Pedido ${state.currentOrder.orderNumber} - ${state.currentOrder.motorcycles.length} motocicleta(s) - ${date}`;
+            }
+        }
+
+        function renderSummary() {
+            const count = state.currentOrder.motorcycles.length;
+            elements.countDisplay.textContent = count;
+            
+            // Update progress circle
+            const percentage = (count / 40) * 100;
+            elements.progressCircle.setAttribute('stroke-dasharray', `${percentage}, 100`);
+            elements.progressText.textContent = `${count}/40`;
+            
+            // Show/hide empty state
+            if (count === 0) {
+                elements.emptyState.classList.remove('hidden');
+                elements.emptyState.classList.add('block');
+                elements.motorcyclesList.classList.add('hidden');
+            } else {
+                elements.emptyState.classList.remove('block');
+                elements.emptyState.classList.add('hidden');
+                elements.motorcyclesList.classList.remove('hidden');
+            }
+        }
+
+        function renderMotorcyclesList() {
+            elements.motorcyclesList.innerHTML = '';
+            
+            state.currentOrder.motorcycles.forEach((moto, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-2xl shadow-sm p-6 hover:shadow-md transition-all duration-300';
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900">${moto.model}</h3>
+                            ${moto.year ? `<p class="text-slate-600">Año: ${moto.year}</p>` : ''}
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="edit-btn p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all duration-300" data-index="${index}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+                            </button>
+                            <button class="delete-btn p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300" data-index="${index}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        ${moto.primaryColor || moto.secondaryColor ? `
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-palette text-slate-500"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                            <span class="text-sm text-slate-700">
+                                ${moto.primaryColor ? `Principal: ${moto.primaryColor}` : ''}
+                                ${moto.primaryColor && moto.secondaryColor ? ' | ' : ''}
+                                ${moto.secondaryColor ? `Secundario: ${moto.secondaryColor}` : ''}
+                            </span>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hash text-slate-500"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+                                <div>
+                                    <div class="text-xs text-slate-500">Chasis</div>
+                                    <div class="font-mono text-sm font-medium text-slate-900">${moto.chassisNumber}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cog text-slate-500"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 22v-2"/><path d="m17 20.66-1-1.73"/><path d="M11 10.27 7 3.34"/><path d="m20.66 17-1.73-1"/><path d="m3.34 7 1.73 1"/><path d="M14 12h8"/><path d="M2 12h2"/><path d="m20.66 7-1.73 1"/><path d="m3.34 17 1.73-1"/><path d="m17 3.34-1 1.73"/><path d="m11 13.73-4 6.93"/></svg>
+                                <div>
+                                    <div class="text-xs text-slate-500">Motor</div>
+                                    <div class="font-mono text-sm font-medium text-slate-900">${moto.engineNumber}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${moto.plate ? `
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car text-slate-500"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+                            <span class="text-sm text-slate-700">Placa: ${moto.plate}</span>
+                        </div>
+                        ` : ''}
+                        
+                        ${moto.notes ? `
+                        <div class="pt-3 border-t border-slate-100">
+                            <div class="text-xs text-slate-500 mb-1">Observaciones</div>
+                            <p class="text-sm text-slate-700">${moto.notes}</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                elements.motorcyclesList.appendChild(card);
+            });
+            
+            // Add event listeners to edit and delete buttons
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const index = parseInt(e.currentTarget.getAttribute('data-index'));
+                    editMotorcycle(index);
+                });
+            });
+            
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const index = parseInt(e.currentTarget.getAttribute('data-index'));
+                    deleteMotorcycle(index);
+                });
+            });
+        }
+
+        // Utility Functions
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
