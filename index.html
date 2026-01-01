@@ -199,27 +199,50 @@
             </div>
         </div>
 
-        <!-- QR Scanner Modal -->
+        <!-- QR/Barcode Scanner Modal -->
         <div id="qrScannerModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-30 hidden">
             <div class="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-xl">
                 <div class="text-center mb-6">
-                    <h3 class="text-2xl font-bold text-slate-900 mb-2">Escáner QR</h3>
-                    <p class="text-slate-600">Apunte la cámara hacia el código QR de la motocicleta</p>
+                    <h3 class="text-2xl font-bold text-slate-900 mb-2">Escáner QR / Código de Barras</h3>
+                    <p class="text-slate-600">Apunte la cámara hacia el código QR o código de barras</p>
                 </div>
                 
                 <!-- QR Scanner Container -->
-                <div id="qr-reader" class="w-full max-w-md mx-auto mb-6"></div>
+                <div id="qr-reader" class="w-full max-w-md mx-auto mb-6 relative">
+                    <!-- Camera selection -->
+                    <div class="absolute top-2 right-2 z-10">
+                        <button id="switchCameraBtn" class="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-all duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Camera Status -->
+                <div id="cameraStatus" class="text-center mb-4">
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full">
+                        <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                        <span id="cameraStatusText">Cámara activa - Escaneando...</span>
+                    </div>
+                </div>
+                
+                <!-- Scan Results -->
+                <div id="scanResults" class="hidden mb-6 p-4 bg-slate-50 rounded-xl">
+                    <h4 class="font-medium text-slate-700 mb-2">Resultado del escaneo:</h4>
+                    <div class="font-mono text-lg bg-white p-3 rounded border border-slate-200" id="scannedData"></div>
+                    <div class="mt-2 text-sm text-slate-600" id="scanType"></div>
+                </div>
                 
                 <!-- Manual Input as Fallback -->
                 <div class="bg-slate-50 p-4 rounded-xl mb-6">
-                    <h4 class="font-medium text-slate-700 mb-2">¿No funciona el escáner?</h4>
+                    <h4 class="font-medium text-slate-700 mb-2">Entrada manual</h4>
                     <div class="space-y-3">
                         <div>
-                            <label class="block text-sm text-slate-600 mb-1">Formato QR esperado: CHASIS|MOTOR|MODELO|COLOR</label>
-                            <input type="text" id="manualQrInput" class="w-full px-4 py-2 border border-slate-300 rounded-xl uppercase" placeholder="EJ: JH2SC5900XM123456|SC59E1234567|YAMAHA R1|ROJO">
+                            <label class="block text-sm text-slate-600 mb-1">Ingresa el número de serie manualmente:</label>
+                            <input type="text" id="manualSerialInput" class="w-full px-4 py-3 border border-slate-300 rounded-xl uppercase text-center text-lg font-mono" placeholder="EJ: JH2SC5900XM123456">
                         </div>
-                        <button id="useManualInputBtn" class="w-full px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-xl transition-all duration-300">
-                            Usar Datos Manuales
+                        <button id="useManualInputBtn" class="w-full px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-xl transition-all duration-300 font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-keyboard inline mr-2"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+                            Usar Número Manual
                         </button>
                     </div>
                 </div>
@@ -228,8 +251,8 @@
                     <button id="cancelQrScanBtn" type="button" class="flex-1 px-4 py-3 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-2xl font-medium transition-all duration-300">
                         Cancelar
                     </button>
-                    <button id="stopCameraBtn" type="button" class="flex-1 px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-2xl font-medium transition-all duration-300">
-                        Detener Cámara
+                    <button id="useScannedDataBtn" type="button" class="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-medium transition-all duration-300 hidden">
+                        Usar este Número
                     </button>
                 </div>
             </div>
@@ -249,10 +272,13 @@
             isEditing: false,
             editingIndex: -1,
             scanTarget: null, // 'chassis', 'engine' or 'full'
-            dealerName: 'Concesionario Principal',
+            dealerName: 'CONCESIONARIO PRINCIPAL',
             currentView: 'list', // 'list' or 'form'
             qrScanner: null,
-            isCameraActive: false
+            isCameraActive: false,
+            availableCameras: [],
+            currentCameraIndex: 0,
+            lastScannedData: null
         };
 
         // Initialize Lucide Icons
@@ -276,9 +302,14 @@
             scanChassisBtn: document.getElementById('scanChassisBtn'),
             scanEngineBtn: document.getElementById('scanEngineBtn'),
             cancelQrScanBtn: document.getElementById('cancelQrScanBtn'),
-            stopCameraBtn: document.getElementById('stopCameraBtn'),
-            manualQrInput: document.getElementById('manualQrInput'),
+            switchCameraBtn: document.getElementById('switchCameraBtn'),
+            useScannedDataBtn: document.getElementById('useScannedDataBtn'),
+            manualSerialInput: document.getElementById('manualSerialInput'),
             useManualInputBtn: document.getElementById('useManualInputBtn'),
+            cameraStatusText: document.getElementById('cameraStatusText'),
+            scanResults: document.getElementById('scanResults'),
+            scannedData: document.getElementById('scannedData'),
+            scanType: document.getElementById('scanType'),
             formError: document.getElementById('formError'),
             errorMessage: document.getElementById('errorMessage'),
             aiSuggestion: document.getElementById('aiSuggestion'),
@@ -324,11 +355,12 @@
 
             // QR Scanner Modal Buttons
             elements.cancelQrScanBtn.addEventListener('click', closeQrScanner);
-            elements.stopCameraBtn.addEventListener('click', stopCamera);
+            elements.switchCameraBtn.addEventListener('click', switchCamera);
+            elements.useScannedDataBtn.addEventListener('click', useScannedData);
             elements.useManualInputBtn.addEventListener('click', useManualInput);
 
-            // Manual QR Input - Enter key support
-            elements.manualQrInput.addEventListener('keypress', (e) => {
+            // Manual Serial Input - Enter key support
+            elements.manualSerialInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     useManualInput();
@@ -414,142 +446,273 @@
         // QR Scanner Functions
         function openQrScanner(target) {
             state.scanTarget = target;
+            state.lastScannedData = null;
+            
+            // Reset UI
+            elements.scanResults.classList.add('hidden');
+            elements.useScannedDataBtn.classList.add('hidden');
+            elements.manualSerialInput.value = '';
+            elements.cameraStatusText.textContent = 'Cámara activa - Escaneando...';
+            
+            // Show modal
             elements.qrScannerModal.classList.remove('hidden');
-            elements.manualQrInput.value = '';
             
             // Initialize QR Scanner
             setTimeout(() => {
-                if (!state.qrScanner) {
-                    initializeQrScanner();
-                } else {
-                    startCamera();
-                }
+                initializeQrScanner();
             }, 100);
         }
 
         function initializeQrScanner() {
             try {
-                state.qrScanner = new Html5Qrcode("qr-reader");
-                
-                // Start camera with specific constraints for QR scanning
-                const config = { 
-                    fps: 10, 
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0
-                };
-                
-                // Try to get user media
-                Html5Qrcode.getCameras().then(cameras => {
-                    if (cameras && cameras.length > 0) {
-                        const cameraId = cameras[0].id; // Use first available camera
-                        state.qrScanner.start(
-                            cameraId,
-                            config,
-                            onQrScanSuccess,
-                            onQrScanError
-                        ).then(() => {
-                            state.isCameraActive = true;
-                            console.log("Cámara iniciada correctamente");
-                        }).catch(err => {
-                            console.error("Error al iniciar cámara:", err);
-                            showCameraError();
-                        });
-                    } else {
-                        console.error("No se encontraron cámaras disponibles");
-                        showCameraError();
-                    }
-                }).catch(err => {
-                    console.error("Error al obtener cámaras:", err);
-                    showCameraError();
-                });
-                
+                // Stop any existing scanner
+                if (state.qrScanner && state.isCameraActive) {
+                    state.qrScanner.stop().then(() => {
+                        state.isCameraActive = false;
+                        createNewScanner();
+                    }).catch(err => {
+                        console.error("Error al detener cámara previa:", err);
+                        createNewScanner();
+                    });
+                } else {
+                    createNewScanner();
+                }
             } catch (error) {
-                console.error("Error al inicializar escáner QR:", error);
+                console.error("Error al inicializar escáner:", error);
                 showCameraError();
             }
         }
 
-        function startCamera() {
-            if (state.qrScanner && !state.isCameraActive) {
-                Html5Qrcode.getCameras().then(cameras => {
-                    if (cameras && cameras.length > 0) {
-                        const cameraId = cameras[0].id;
-                        const config = { 
-                            fps: 10, 
-                            qrbox: { width: 250, height: 250 },
-                            aspectRatio: 1.0
-                        };
-                        
-                        state.qrScanner.start(
-                            cameraId,
-                            config,
-                            onQrScanSuccess,
-                            onQrScanError
-                        ).then(() => {
-                            state.isCameraActive = true;
-                        }).catch(err => {
-                            console.error("Error al reiniciar cámara:", err);
-                        });
+        function createNewScanner() {
+            // Create new scanner instance
+            state.qrScanner = new Html5Qrcode("qr-reader");
+            
+            // Get available cameras
+            Html5Qrcode.getCameras().then(cameras => {
+                if (cameras && cameras.length > 0) {
+                    state.availableCameras = cameras;
+                    
+                    // Try to start with back camera first, then front
+                    let cameraId = cameras[0].id;
+                    let cameraIndex = 0;
+                    
+                    // Prefer back camera if available
+                    for (let i = 0; i < cameras.length; i++) {
+                        if (cameras[i].label.toLowerCase().includes('back') || 
+                            cameras[i].label.toLowerCase().includes('posterior') ||
+                            cameras[i].label.toLowerCase().includes('trasera')) {
+                            cameraId = cameras[i].id;
+                            cameraIndex = i;
+                            break;
+                        }
                     }
-                });
+                    
+                    state.currentCameraIndex = cameraIndex;
+                    startCamera(cameraId);
+                    
+                    // Update camera status
+                    elements.cameraStatusText.textContent = `Cámara: ${cameras[cameraIndex].label || 'Cámara ' + (cameraIndex + 1)}`;
+                    
+                } else {
+                    console.error("No se encontraron cámaras disponibles");
+                    showCameraError();
+                }
+            }).catch(err => {
+                console.error("Error al obtener cámaras:", err);
+                showCameraError();
+            });
+        }
+
+        function startCamera(cameraId) {
+            if (!state.qrScanner) return;
+            
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+                supportedScanTypes: [
+                    Html5QrcodeScanType.SCAN_TYPE_CAMERA
+                ],
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.CODE_93,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.ITF
+                ]
+            };
+            
+            state.qrScanner.start(
+                cameraId,
+                config,
+                onQrScanSuccess,
+                onQrScanError
+            ).then(() => {
+                state.isCameraActive = true;
+                console.log("Cámara iniciada correctamente");
+            }).catch(err => {
+                console.error("Error al iniciar cámara:", err);
+                showCameraError();
+            });
+        }
+
+        function switchCamera() {
+            if (!state.qrScanner || !state.isCameraActive || state.availableCameras.length < 2) {
+                return;
             }
+            
+            // Stop current camera
+            state.qrScanner.stop().then(() => {
+                state.isCameraActive = false;
+                
+                // Switch to next camera
+                state.currentCameraIndex = (state.currentCameraIndex + 1) % state.availableCameras.length;
+                const nextCameraId = state.availableCameras[state.currentCameraIndex].id;
+                
+                // Update camera status
+                elements.cameraStatusText.textContent = `Cámara: ${state.availableCameras[state.currentCameraIndex].label || 'Cámara ' + (state.currentCameraIndex + 1)}`;
+                
+                // Start next camera
+                startCamera(nextCameraId);
+                
+            }).catch(err => {
+                console.error("Error al cambiar cámara:", err);
+            });
         }
 
         function onQrScanSuccess(decodedText) {
-            console.log("QR escaneado:", decodedText);
+            console.log("Código escaneado:", decodedText);
             
-            // Parse QR data (expected format: CHASIS|MOTOR|MODELO|COLOR)
-            const qrData = decodedText.split('|');
+            // Store the scanned data
+            state.lastScannedData = decodedText.trim().toUpperCase();
             
-            if (qrData.length >= 2) {
-                // Extract data from QR
-                const chassisNumber = qrData[0]?.trim().toUpperCase() || '';
-                const engineNumber = qrData[1]?.trim().toUpperCase() || '';
-                const model = qrData[2]?.trim().toUpperCase() || '';
-                const color = qrData[3]?.trim().toUpperCase() || '';
-                
-                // Fill form fields based on scan target
-                if (state.scanTarget === 'chassis' && chassisNumber) {
-                    document.getElementById('chassisNumber').value = chassisNumber;
-                } else if (state.scanTarget === 'engine' && engineNumber) {
-                    document.getElementById('engineNumber').value = engineNumber;
-                } else if (state.scanTarget === 'full') {
-                    // Fill all fields if it's a full scan
-                    if (chassisNumber) document.getElementById('chassisNumber').value = chassisNumber;
-                    if (engineNumber) document.getElementById('engineNumber').value = engineNumber;
-                    if (model) document.getElementById('model').value = model;
-                    if (color) document.getElementById('primaryColor').value = color;
-                }
-                
-                // Stop camera and close modal
-                stopCamera();
-                closeQrScanner();
-                
-                // Play success sound (optional)
-                playBeepSound();
-                
-                // Trigger AI suggestion
-                generateAISuggestion();
+            // Display results
+            elements.scannedData.textContent = state.lastScannedData;
+            
+            // Determine scan type
+            let scanTypeText = "Tipo: ";
+            if (state.lastScannedData.includes('|')) {
+                scanTypeText += "QR con múltiples campos";
+            } else if (/^[A-Z0-9]{10,}$/.test(state.lastScannedData)) {
+                scanTypeText += "Número de serie (QR/Código de barras)";
+            } else if (/^\d{10,}$/.test(state.lastScannedData)) {
+                scanTypeText += "Código de barras numérico";
             } else {
-                alert("Formato QR no válido. Se espera: CHASIS|MOTOR|MODELO|COLOR");
+                scanTypeText += "Texto escaneado";
             }
+            
+            elements.scanType.textContent = scanTypeText;
+            
+            // Show results and use button
+            elements.scanResults.classList.remove('hidden');
+            elements.useScannedDataBtn.classList.remove('hidden');
+            
+            // Auto-fill after 1 second if it's a simple serial number
+            if (!state.lastScannedData.includes('|') && state.lastScannedData.length >= 10) {
+                setTimeout(() => {
+                    useScannedData();
+                }, 1000);
+            }
+            
+            // Play success sound
+            playBeepSound();
         }
 
         function onQrScanError(error) {
             // Silently handle scan errors - don't show to user
-            console.log("Escaneando...", error);
+            // Only log if it's not a normal "scanning in progress" error
+            if (!error || error.toString().includes('NotFoundException')) {
+                return; // Normal scanning state
+            }
+            console.log("Error de escaneo:", error);
         }
 
-        function useManualInput() {
-            const manualText = elements.manualQrInput.value.trim().toUpperCase();
-            
-            if (!manualText) {
-                alert("Por favor ingresa datos en el formato: CHASIS|MOTOR|MODELO|COLOR");
+        function useScannedData() {
+            if (!state.lastScannedData) {
+                alert("No hay datos escaneados para usar.");
                 return;
             }
             
-            // Parse manual input
-            onQrScanSuccess(manualText);
+            const scannedText = state.lastScannedData;
+            let chassisNumber = '';
+            let engineNumber = '';
+            
+            // Parse the scanned data
+            if (scannedText.includes('|')) {
+                // Multi-field format: FIELD1|FIELD2|FIELD3|...
+                const fields = scannedText.split('|');
+                
+                // Simple heuristic: first field looks like chassis, second like engine
+                // Or use all fields as potential serial numbers
+                if (fields.length >= 2) {
+                    // Try to identify which field is which based on patterns
+                    for (let field of fields) {
+                        field = field.trim();
+                        if (field.length >= 10) {
+                            // Common chassis number patterns
+                            if (field.match(/^[A-Z0-9]{10,}$/) && !chassisNumber) {
+                                chassisNumber = field;
+                            } 
+                            // Common engine number patterns
+                            else if (field.match(/^[A-Z0-9]{8,}$/) && !engineNumber) {
+                                engineNumber = field;
+                            }
+                        }
+                    }
+                    
+                    // If we couldn't identify, use first two fields
+                    if (!chassisNumber && fields[0]) chassisNumber = fields[0].trim();
+                    if (!engineNumber && fields[1]) engineNumber = fields[1].trim();
+                }
+            } else {
+                // Single serial number - put it in both fields or based on target
+                if (state.scanTarget === 'chassis') {
+                    chassisNumber = scannedText;
+                } else if (state.scanTarget === 'engine') {
+                    engineNumber = scannedText;
+                } else {
+                    // Auto-detect based on pattern
+                    if (scannedText.match(/^[A-Z]{2}/) || scannedText.length >= 15) {
+                        chassisNumber = scannedText;
+                    } else {
+                        engineNumber = scannedText;
+                    }
+                }
+            }
+            
+            // Fill the appropriate field
+            if (state.scanTarget === 'chassis' && chassisNumber) {
+                document.getElementById('chassisNumber').value = chassisNumber;
+            } else if (state.scanTarget === 'engine' && engineNumber) {
+                document.getElementById('engineNumber').value = engineNumber;
+            } else {
+                // Fill both if we have both
+                if (chassisNumber) document.getElementById('chassisNumber').value = chassisNumber;
+                if (engineNumber) document.getElementById('engineNumber').value = engineNumber;
+            }
+            
+            // Close scanner
+            closeQrScanner();
+            
+            // Trigger AI suggestion
+            generateAISuggestion();
+        }
+
+        function useManualInput() {
+            const manualText = elements.manualSerialInput.value.trim().toUpperCase();
+            
+            if (!manualText) {
+                alert("Por favor ingresa un número de serie.");
+                return;
+            }
+            
+            // Use the manual input as scanned data
+            state.lastScannedData = manualText;
+            useScannedData();
         }
 
         function stopCamera() {
@@ -566,10 +729,21 @@
         function closeQrScanner() {
             stopCamera();
             elements.qrScannerModal.classList.add('hidden');
+            
+            // Reset scanner for next use
+            if (state.qrScanner) {
+                try {
+                    state.qrScanner.clear();
+                } catch (e) {
+                    console.log("Error clearing scanner:", e);
+                }
+            }
         }
 
         function showCameraError() {
-            alert("No se pudo acceder a la cámara. Por favor, asegúrate de haber otorgado los permisos necesarios y que tu dispositivo tenga cámara.");
+            elements.cameraStatusText.textContent = "Error de cámara - Usa entrada manual";
+            elements.cameraStatusText.parentElement.classList.remove('bg-emerald-100', 'text-emerald-700');
+            elements.cameraStatusText.parentElement.classList.add('bg-red-100', 'text-red-700');
         }
 
         function playBeepSound() {
